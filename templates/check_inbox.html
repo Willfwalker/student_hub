@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Inbox</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .email-container {
+            position: relative;
+            max-width: 800px;
+            margin: 75px auto;
+            padding: 0;
+            background: rgba(26, 26, 26, 0.9);
+            border-radius: 8px;
+            color: white;
+            height: 600px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.2);
+            overflow-x: hidden;
+        }
+
+        .email-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .email-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .email-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .email-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .email-header-title {
+            position: sticky;
+            top: 0;
+            background: rgba(26, 26, 26, 0.95);
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px 8px 0 0;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .back-button-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+        }
+
+        .back-button {
+            background: rgba(26, 26, 26, 0.9);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 1em;
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+
+        .back-button:hover {
+            background: rgba(26, 26, 26, 0.95);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .email-item {
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s, background 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .email-item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .email-subject {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .email-body {
+            white-space: pre-wrap;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        .email-timestamp {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .sender-info {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .email-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+        }
+
+        .no-emails {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+
+        #emailList {
+            padding: 20px;
+            height: calc(100% - 60px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-button-container">
+        <a href="/dashboard" class="back-button">Back to Dashboard</a>
+    </div>
+    
+    <div class="email-container">
+        <div class="email-header-title">
+            <h2>Email Inbox</h2>
+            
+            <!-- Debug Info -->
+            {% if error %}
+                <div style="color: red;">Error: {{ error }}</div>
+            {% endif %}
+            
+            <!-- Sender Selection -->
+            {% if allowed_senders %}
+                <select id="senderSelect">
+                    <option value="all" {% if current_sender == "all" %}selected{% endif %}>All</option>
+                    {% for sender in allowed_senders %}
+                        <option value="{{ sender }}" {% if sender == current_sender %}selected{% endif %}>
+                            {{ sender }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                <div style="color: yellow;">No allowed senders configured</div>
+            {% endif %}
+        </div>
+        
+        <div id="emailList">
+            {% if emails and emails|length > 0 %}
+                <div id="emailContainer">
+                    {% for email in emails %}
+                        <div class="email-item" data-sender="{{ email.sender }}">
+                            <div class="sender-info">From: {{ email.sender }}</div>
+                            <div class="email-header">
+                                <div class="email-subject">{{ email.subject }}</div>
+                                <div class="email-timestamp">
+                                    {{ (email.timestamp|int|string)[:10]|timestamp_to_date }}
+                                </div>
+                            </div>
+                            <div class="email-body">{{ email.body }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-emails">
+                    <p>No emails found for sender: {{ current_sender if current_sender else 'None' }}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('senderSelect').addEventListener('change', function() {
+            const selectedSender = this.value;
+            // Redirect to the same page with the new sender parameter
+            window.location.href = `/check-inbox?sender=${encodeURIComponent(selectedSender)}`;
+        });
+    </script>
+</body>
+</html>

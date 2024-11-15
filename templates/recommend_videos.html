@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Recommendations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .video-container {
+            padding: 40px !important;
+            max-width: 800px !important;
+            margin: 0 auto !important;
+            background: linear-gradient(45deg, #1a1a1a, #2c3e50) !important;
+            min-height: 100vh !important;
+        }
+
+        .video-list {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 20px !important;
+            margin-top: 30px !important;
+        }
+
+        .video-item {
+            background: rgba(255, 255, 255, 0.1) !important;
+            padding: 20px !important;
+            border-radius: 8px !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .video-item a {
+            color: white !important;
+            text-decoration: none !important;
+            display: block !important;
+            word-break: break-all !important;
+        }
+
+        .video-item a:hover {
+            text-decoration: underline !important;
+        }
+
+        .back-button {
+            display: inline-block !important;
+            padding: 10px 20px !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+            text-decoration: none !important;
+            border-radius: 5px !important;
+            margin-bottom: 20px !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        h1 {
+            color: white !important;
+            margin-bottom: 30px !important;
+        }
+
+        .search-prompt {
+            color: #aaa !important;
+            font-style: italic !important;
+            margin-bottom: 20px !important;
+        }
+
+        .video-description {
+            color: #aaa !important;
+            font-size: 0.9em !important;
+            margin-top: 10px !important;
+        }
+
+        .video-item h3 {
+            color: white !important;
+            margin: 0 !important;
+            margin-bottom: 5px !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <a href="{{ url_for('dashboard') }}" class="back-button">← Back to Dashboard</a>
+        <h1>Video Recommendations</h1>
+        <div class="search-prompt">Search results for: "{{ prompt }}"</div>
+        <div class="video-list">
+            {% if videos %}
+                {% for video in videos %}
+                <div class="video-item">
+                    <a href="{{ video.url }}" target="_blank">
+                        <h3>{{ video.title }}</h3>
+                        <p class="video-description">{{ video.description[:200] }}...</p>
+                    </a>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="video-item">
+                    <p>No videos found. Please try a different search term.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

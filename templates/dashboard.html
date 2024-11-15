@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Hub - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .dashboard-container {
+            display: flex !important;
+            min-height: 200vh !important;
+            padding-top: 60px !important;
+            position: relative !important;
+            width: 100% !important;
+            overflow-y: auto !important;
+        }
+
+        .main-content {
+            flex: 1 !important;
+            padding: 20px !important;
+            background: linear-gradient(45deg, #1a1a1a, #2c3e50) !important;
+            background-image: 
+                linear-gradient(45deg, #1a1a1a, #2c3e50),
+                repeating-linear-gradient(
+                    45deg,
+                    rgba(255,255,255,0.05) 0px,
+                    rgba(255,255,255,0.05) 1px,
+                    transparent 1px,
+                    transparent 10px
+                ) !important;
+            position: relative !important;
+            margin-left: 230px !important;
+            margin-right: 20px !important;
+            min-height: 200vh !important;
+            overflow-y: auto !important;
+            width: calc(100% - 250px) !important;
+        }
+
+        .taskbar {
+            width: 210px !important;
+            background: rgba(26, 26, 26, 0.9) !important;
+            padding: 20px !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+            position: fixed !important;
+            top: 60px !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            overflow-y: auto !important;
+            z-index: 100 !important;
+        }
+
+        .task-button {
+            width: 100% !important;
+            padding: 15px !important;
+            margin-bottom: 10px !important;
+            background: transparent !important;
+            border: none !important;
+            color: rgba(255, 255, 255, 0.85) !important;
+            cursor: pointer !important;
+            text-align: left !important;
+            transition: all 0.3s ease !important;
+            display: inline-block !important;
+            box-sizing: border-box !important;
+            font-family: inherit !important;
+            font-size: 0.95em !important;
+            text-decoration: underline !important;
+            text-decoration-thickness: 1px !important;
+            text-underline-offset: 5px !important;
+            text-decoration-color: rgba(255, 255, 255, 0.5) !important;
+            letter-spacing: 0.2px !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+
+        .task-button::after {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: -100% !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent) !important;
+            transition: left 0.5s ease !important;
+        }
+
+        .task-button:hover::after {
+            left: 100% !important;
+        }
+
+        .task-button:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-radius: 8px !important;
+            color: white !important;
+            text-decoration-color: white !important;
+        }
+
+        .hw-doc-button {
+            position: absolute !important;
+            top: 5% !important;
+            left: 40px !important;
+            padding: 20px 40px !important;
+            background: rgba(26, 26, 26, 0.9) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            font-weight: bold !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            transition: background 0.3s ease !important;
+            font-size: 1.1em !important;
+            text-decoration: none !important;
+        }
+
+        .hw-doc-button:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .divider-line {
+            position: absolute !important;
+            top: calc(5% + 70px) !important;
+            left: 40px !important;
+            width: calc(100% - 60px) !important;
+            height: 2px !important;
+            background: rgba(255, 255, 255, 0.2) !important;
+            margin: 20px 0 !important;
+        }
+
+        .taskbar-divider {
+            display: none !important;
+        }
+
+        /* Add styles for the modal */
+        .modal {
+            display: none;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0, 0, 0, 0.7) !important;
+            z-index: 1000 !important;
+        }
+
+        .modal-content {
+            position: relative !important;
+            background: rgba(26, 26, 26, 0.95) !important;
+            margin: 15% auto !important;
+            padding: 20px !important;
+            width: 70% !important;
+            max-width: 800px !important;
+            border-radius: 8px !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .assignments-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 20px !important;
+            margin-top: 20px !important;
+        }
+
+        .assignment-option {
+            background: rgba(255, 255, 255, 0.1) !important;
+            padding: 15px !important;
+            border-radius: 8px !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            cursor: pointer !important;
+            transition: background 0.3s ease !important;
+        }
+
+        .assignment-option:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .close-modal {
+            position: absolute !important;
+            right: 20px !important;
+            top: 20px !important;
+            color: white !important;
+            font-size: 24px !important;
+            cursor: pointer !important;
+        }
+
+        .loading-spinner {
+            display: none;
+            color: white !important;
+            text-align: center !important;
+            margin-top: 10px !important;
+        }
+
+        /* Add specific style for anchor buttons */
+        a.task-button {
+            display: inline-block !important;
+            width: 100% !important;
+            padding: 15px !important;
+            margin-bottom: 10px !important;
+            background: transparent !important;
+            border: none !important;
+            color: rgba(255, 255, 255, 0.85) !important;
+            cursor: pointer !important;
+            text-align: left !important;
+            transition: all 0.3s ease !important;
+            box-sizing: border-box !important;
+            font-family: inherit !important;
+            font-size: 0.95em !important;
+            text-decoration: underline !important;
+            text-decoration-thickness: 1px !important;
+            text-underline-offset: 5px !important;
+            text-decoration-color: rgba(255, 255, 255, 0.5) !important;
+            letter-spacing: 0.2px !important;
+            line-height: normal !important;
+        }
+
+        a.task-button:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-radius: 8px !important;
+            color: white !important;
+            text-decoration-color: white !important;
+        }
+
+        .video-list {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 15px !important;
+            margin-top: 20px !important;
+        }
+
+        .video-item {
+            background: rgba(255, 255, 255, 0.1) !important;
+            padding: 15px !important;
+            border-radius: 8px !important;
+            word-break: break-all !important;
+        }
+
+        .video-item a {
+            color: white !important;
+            text-decoration: none !important;
+        }
+
+        .video-item a:hover {
+            text-decoration: underline !important;
+        }
+
+        .dashboard-header h2 {
+            text-decoration: underline !important;
+            text-decoration-thickness: 2px !important;
+            text-underline-offset: 5px !important;
+        }
+
+        .taskbar-title {
+            color: white !important;
+            font-size: 1.5em !important;
+            margin-bottom: 20px !important;
+            opacity: 0.9 !important;
+        }
+
+        .connections-button, .login-button {
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 50% !important;
+            background: rgba(26, 26, 26, 0.9) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            cursor: pointer !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: background 0.3s ease !important;
+            font-size: 14px !important;
+            font-weight: bold !important;
+        }
+
+        .connections-button:hover, .login-button:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .connections-button img, .login-button img {
+            width: 24px !important;
+            height: 24px !important;
+            border-radius: 50% !important;
+            object-fit: cover !important;
+        }
+
+        /* Update header to include both buttons */
+        .dashboard-header {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 15px 20px !important;
+        }
+
+        .header-buttons {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+        }
+
+        .login-button {
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 50% !important;
+            background: rgba(26, 26, 26, 0.9) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: #e0e0e0 !important;  /* Match our text color scheme */
+            cursor: pointer !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: background 0.3s ease !important;
+            font-weight: 500 !important;
+            padding: 0 !important;  /* Remove padding to ensure perfect circle */
+            font-size: 16px !important;  /* Ensure consistent font size */
+            color: white !important;     /* Make text white */
+        }
+
+        .login-button span {
+            font-size: 16px !important;
+            line-height: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .class-container {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+            width: 100% !important;
+        }
+
+        .class-buttons {
+            margin: 0 auto !important;
+            position: absolute !important;
+            top: calc(5% + 200px) !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            grid-template-rows: repeat(3, auto) !important;
+            gap: 20px !important;
+            align-items: start !important;
+            width: calc(100% - 80px) !important;
+            max-width: 1000px !important;
+        }
+
+        .class-button {
+            padding: 20px 25px !important;
+            background: linear-gradient(145deg, rgba(26, 26, 26, 0.9), rgba(38, 38, 38, 0.9)) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease !important;
+            text-align: left !important;
+            width: 100% !important;
+            font-size: 0.9em !important;
+            white-space: normal !important;
+            overflow: hidden !important;
+            display: flex !important;
+            align-items: center !important;
+            height: 80px !important;
+            line-height: 1.2 !important;
+            word-wrap: break-word !important;
+            word-break: break-word !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+            transform: translateY(0);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                        box-shadow 0.3s ease,
+                        border-color 0.3s ease !important;
+        }
+
+        .class-button:hover {
+            transform: translateY(-5px) scale(1.02) !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+            border-color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        .classes-heading {
+            color: white !important;
+            position: absolute !important;
+            top: calc(5% + 135px) !important;
+            left: 40px !important;
+            font-size: 2.5em !important;
+            margin: 0 !important;
+            font-weight: 500 !important;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.1) !important;
+            letter-spacing: 1px !important;
+        }
+
+        .calendar-heading {
+            color: white !important;
+            position: absolute !important;
+            top: calc(5% + 1100px) !important;
+            left: 40px !important;
+            font-size: 2.5em !important;
+            margin: 0 !important;
+            font-weight: 500 !important;
+            z-index: 1 !important;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.1) !important;
+            letter-spacing: 1px !important;
+        }
+
+        .bottom-divider {
+            position: absolute !important;
+            top: calc(5% + 1150px) !important;
+            left: 40px !important;
+            width: calc(100% - 60px) !important;
+            height: 2px !important;
+            background: rgba(255, 255, 255, 0.2) !important;
+            margin: 20px 0 !important;
+        }
+
+        .calendar {
+            position: absolute !important;
+            top: calc(5% + 1200px) !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            background: rgba(26, 26, 26, 0.9) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 8px !important;
+            padding: 15px !important;
+            width: 80.5% !important;
+            max-width: 805px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+            backdrop-filter: blur(8px) !important;
+            animation: fadeIn 0.5s ease-out !important;
+        }
+
+        .calendar-grid {
+            display: grid !important;
+            grid-template-columns: repeat(7, 1fr) !important;
+            gap: 2px !important;
+            color: white !important;
+            width: 100% !important;
+            padding-bottom: 15px !important;
+        }
+
+        .calendar-header {
+            color: white !important;
+            text-align: center !important;
+            margin-bottom: 15px !important;
+            font-size: 1.2em !important;
+            width: 100% !important;
+        }
+
+        .weekday {
+            text-align: center !important;
+            padding: 3px !important;
+            font-weight: bold !important;
+            color: rgba(255, 255, 255, 0.8) !important;
+            font-size: 0.9em !important;
+        }
+
+        .day {
+            text-align: center !important;
+            padding: 2px 1px !important;
+            border-radius: 4px !important;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05)) !important;
+            min-height: 67px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 1px !important;
+            font-size: 0.95em !important;
+            width: 100% !important;
+            overflow: hidden !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            transition: transform 0.2s ease, background 0.2s ease !important;
+        }
+
+        .day:hover {
+            transform: translateY(-2px) !important;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.08)) !important;
+        }
+
+        .day.today {
+            background: linear-gradient(145deg, rgba(65, 105, 225, 0.2), rgba(65, 105, 225, 0.1)) !important;
+            border: 1px solid rgba(65, 105, 225, 0.3) !important;
+        }
+
+        .assignments {
+            font-size: 0.85em !important;
+            text-align: left !important;
+            margin-top: 1px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 1px !important;
+            flex: 1 !important;
+        }
+
+        .assignment {
+            padding: 2px 4px !important;
+            font-size: 0.75em !important;
+            background: rgba(65, 105, 225, 0.1) !important;
+            border: 1px solid rgba(65, 105, 225, 0.3) !important;
+            border-radius: 3px !important;
+            margin: 1px 2px !important;
+            cursor: pointer !important;
+            transition: background-color 0.3s ease !important;
+        }
+
+        .assignment:hover {
+            background: rgba(65, 105, 225, 0.2) !important;
+        }
+
+        .day.other-month {
+            color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        .day.today {
+            background: rgba(65, 105, 225, 0.2) !important;
+        }
+
+        .class-container {
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+        }
+
+        .class-button {
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 0 !important;
+            background: linear-gradient(145deg, rgba(26, 26, 26, 0.9), rgba(38, 38, 38, 0.9)) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease !important;
+            width: 100% !important;
+            height: 250px !important;
+            overflow: hidden !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .class-image-container {
+            width: 100% !important;
+            height: 200px !important;
+            overflow: hidden !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            position: relative !important;
+        }
+
+        .class-image-container::after {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 100%) !important;
+            pointer-events: none !important;
+        }
+
+        .class-image {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+
+        .class-name {
+            padding: 15px !important;
+            text-align: center !important;
+            font-size: 1em !important;
+            background: rgba(26, 26, 26, 0.95) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+            height: 50px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .class-button:hover {
+            transform: translateY(-5px) !important;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        /* Update class buttons grid for better spacing */
+        .class-buttons {
+            margin: 0 auto !important;
+            position: absolute !important;
+            top: calc(5% + 200px) !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 30px !important;
+            width: calc(100% - 80px) !important;
+            max-width: 1200px !important;
+        }
+
+        .task-button {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px) translateX(-50%); }
+            to { opacity: 1; transform: translateY(0) translateX(-50%); }
+        }
+
+        .login-button-container {
+            position: relative !important;
+        }
+
+        .login-dropdown {
+            position: absolute !important;
+            top: 45px !important;
+            right: 0 !important;
+            background: rgba(26, 26, 26, 0.95) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 8px !important;
+            min-width: 150px !important;
+            display: none !important;
+            z-index: 1000 !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .login-dropdown.show {
+            display: block !important;
+        }
+
+        .dropdown-item {
+            padding: 12px 15px !important;
+            color: white !important;
+            cursor: pointer !important;
+            transition: background 0.3s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .dropdown-item i {
+            font-size: 16px !important;
+        }
+    </style>
+</head>
+<body>
+    <header class="dashboard-header">
+        <h2>Dashboard</h2>
+        <div class="header-buttons">
+            <button class="connections-button">
+                <img src="{{ url_for('static', filename='images/connections_logo.png') }}" alt="Connections">
+            </button>
+            <div class="login-button-container">
+                <button class="login-button" id="loginButton">
+                    {% if not user_name %}
+                        <span style="font-size: 16px !important;">WW</span>
+                    {% endif %}
+                </button>
+                <div class="login-dropdown" id="loginDropdown">
+                    <div class="dropdown-item">
+                        <i class="fas fa-cog"></i>
+                        Settings
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="dashboard-container">
+        <div class="taskbar">
+            <h2 class="taskbar-title">Tools</h2>
+            <button class="task-button" id="check-inbox">Check Inbox</button>
+            <a href="{{ url_for('assignments') }}" class="task-button">Check Assignments</a>
+            <button class="task-button" id="check-grades">Check Grades</button>
+            <button class="task-button" id="summarize-text">Summarize Text</button>
+            <button class="task-button" id="recommend-videos">Recommend Videos</button>
+            <button class="task-button" id="lecture-summary">Create Lecture Summary</button>
+            <a href="{{ url_for('get_hw_help') }}" class="task-button" id="homework-help">Get Homework Help</a>
+            <button class="task-button" id="todo-list">To-Do List Maker</button>
+        </div>
+        <div class="main-content">
+            <a href="{{ url_for('make_hw_doc') }}" class="hw-doc-button" id="create-hw-doc">Create HW Doc</a>
+            <div class="divider-line"></div>
+            <h2 class="classes-heading">Classes</h2>
+            <div class="class-buttons">
+                {% for class in classes %}
+                    <div class="class-container">
+                        <button class="class-button">
+                            <div class="class-image-container">
+                                <img src="{{ url_for('static', filename='images/class-icons/default_icon.png') }}" 
+                                     alt="{{ class.name }}"
+                                     class="class-image">
+                            </div>
+                            <div class="class-name">{{ class.name }}</div>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+            <h2 class="calendar-heading">Calendar</h2>
+            <div class="divider-line bottom-divider"></div>
+            <div class="calendar">
+                <div class="calendar-header">
+                    <h3>{{ current_month_year }}</h3>
+                </div>
+                <div class="calendar-grid">
+                    <div class="weekday">Sun</div>
+                    <div class="weekday">Mon</div>
+                    <div class="weekday">Tue</div>
+                    <div class="weekday">Wed</div>
+                    <div class="weekday">Thu</div>
+                    <div class="weekday">Fri</div>
+                    <div class="weekday">Sat</div>
+                    {% for day in calendar_days %}
+                        <div class="day {% if day.is_today %}today{% endif %} {% if not day.in_month %}other-month{% endif %}">
+                            {{ day.day }}
+                            {% if day.assignments %}
+                                <div class="assignments">
+                                    {% for assignment in day.assignments %}
+                                        <div class="assignment" data-name="{{ assignment.name }}" data-due-date="{{ assignment.due_date }}" data-class="{{ assignment.class }}" data-description="{{ assignment.description }}">{{ assignment.name }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='student_hub_functions.js') }}"></script>
+    <script>
+        function refreshPage() {
+            location.reload();
+        }
+        
+        setInterval(refreshPage, 10000000);
+    </script>
+    <div id="videoRecommendModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 style="color: white; margin-bottom: 20px;">Get Video Recommendations</h2>
+            <div class="assignments-grid">
+                <div class="assignment-option" id="user-prompt-option">
+                    <h3>From User Prompt</h3>
+                    <p>Enter a topic or question to get relevant video recommendations</p>
+                </div>
+                <div class="assignment-option" id="assignments-option">
+                    <h3>From Assignments</h3>
+                    <p>Get video recommendations based on your current assignments</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const loginButton = document.getElementById('loginButton');
+        const loginDropdown = document.getElementById('loginDropdown');
+
+        loginButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            loginDropdown.classList.toggle('show');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!loginButton.contains(e.target)) {
+                loginDropdown.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignments - Student Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .assignments-container {
+            display: flex !important;
+            min-height: 100vh !important;
+            padding-top: 60px !important;
+        }
+
+        .assignments-content {
+            flex: 1 !important;
+            padding: 20px !important;
+            background: linear-gradient(45deg, #1a1a1a, #2c3e50) !important;
+            position: relative !important;
+        }
+
+        .assignments-list {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 40px !important;
+            padding: 20px !important;
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            margin-top: 60px !important;
+        }
+
+        .assignment-card {
+            background: rgba(26, 26, 26, 0.9) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            padding: 20px !important;
+            border-radius: 8px !important;
+            color: white !important;
+            cursor: pointer !important;
+            transition: background-color 0.3s ease !important;
+            text-decoration: none !important;
+            display: block !important;
+        }
+
+        .assignment-card:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.4) !important;
+        }
+
+        .assignment-title {
+            font-size: 1.2em !important;
+            font-weight: bold !important;
+            margin-bottom: 10px !important;
+            color: white !important;
+        }
+
+        .assignment-course {
+            color: #aaa !important;
+            margin-bottom: 8px !important;
+        }
+
+        .assignment-due {
+            color: #ff9800 !important;
+            margin-bottom: 8px !important;
+        }
+
+        .assignment-points {
+            color: #4CAF50 !important;
+        }
+
+        .back-button {
+            position: absolute !important;
+            top: 20px !important;
+            left: 20px !important;
+            padding: 10px 20px !important;
+            background: rgba(26, 26, 26, 0.9) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            text-decoration: none !important;
+        }
+
+        .course-section {
+            margin-bottom: 40px !important;
+            width: 100% !important;
+        }
+
+        .course-header {
+            color: white !important;
+            font-size: 1.8em !important;
+            font-weight: bold !important;
+            padding: 15px 0 !important;
+            margin-bottom: 20px !important;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .course-assignments {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 20px !important;
+            padding-left: 20px !important;
+        }
+    </style>
+</head>
+<body>
+    <header class="dashboard-header">
+        <h2>Current Assignments</h2>
+        <button class="login-button">Login</button>
+    </header>
+    <div class="assignments-container">
+        <div class="assignments-content">
+            <a href="{{ url_for('dashboard') }}" class="back-button">Back to Dashboard</a>
+            <div class="assignments-list">
+                {% for course in courses %}
+                    {% if assignments.get(course.id) %}
+                        <div class="course-section">
+                            <div class="course-header">
+                                {{ course.name }}
+                            </div>
+                            <div class="course-assignments">
+                                {% for assignment in assignments.get(course.id, []) %}
+                                    <a href="{{ assignment.html_url }}" target="_blank" class="assignment-card">
+                                        <div class="assignment-title">{{ assignment.name }}</div>
+                                        <div class="assignment-due">
+                                            Due: {{ assignment.due_at|default('No due date', true)|format_date }}
+                                        </div>
+                                        <div class="assignment-points">
+                                            Points: {{ assignment.points_possible|default('Not specified', true) }}
+                                        </div>
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
