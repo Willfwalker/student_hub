@@ -42,21 +42,38 @@ class DocsService:
         creds = None
         token_path = os.path.join(os.path.dirname(self.credentials_path), 'token.pickle')
         
+        # Try to load existing credentials
         if os.path.exists(token_path):
-            with open(token_path, 'rb') as token:
-                creds = pickle.load(token)
+            try:
+                with open(token_path, 'rb') as token:
+                    creds = pickle.load(token)
+            except Exception as e:
+                print(f"Error loading credentials: {e}")
+                # If there's an error loading the token, delete it
+                os.remove(token_path)
+                creds = None
         
+        # If no valid credentials available, create new ones
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.credentials_path, self.SCOPES)
-                creds = flow.run_local_server(port=0)
+                try:
+                    creds.refresh(Request())
+                except Exception as e:
+                    print(f"Error refreshing credentials: {e}")
+                    creds = None
             
-            # Save credentials
-            with open(token_path, 'wb') as token:
-                pickle.dump(creds, token)
+            # If still no valid credentials, get new ones
+            if not creds:
+                try:
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        self.credentials_path, self.SCOPES)
+                    creds = flow.run_local_server(port=0)
+                    
+                    # Save the new credentials
+                    with open(token_path, 'wb') as token:
+                        pickle.dump(creds, token)
+                except Exception as e:
+                    raise Exception(f"Failed to create new credentials: {e}")
         
         return creds
 

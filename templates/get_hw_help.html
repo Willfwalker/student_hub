@@ -100,12 +100,11 @@
 </head>
 <body>
     <div class="chat-container">
-        <a href="/dashboard" class="back-button">← Back to Dashboard</a>
+        <a href="javascript:history.back()" class="back-button">← Back</a>
         <h2 style="color: white; margin-bottom: 20px;">AI Homework Helper</h2>
         <div class="chat-messages" id="chat-messages">
             <div class="message ai-message">Hello! I'm your AI homework helper. How can I assist you today?</div>
         </div>
-        <div class="loading" id="loading">AI is thinking...</div>
         <div class="input-container">
             <input type="text" id="user-input" placeholder="Type your question here...">
             <button id="send-button">Send</button>
@@ -117,7 +116,15 @@
             const messagesContainer = document.getElementById('chat-messages');
             const userInput = document.getElementById('user-input');
             const sendButton = document.getElementById('send-button');
-            const loadingIndicator = document.getElementById('loading');
+            let thinkingInterval; // To store the interval ID
+
+            function updateThinkingDots(thinkingDiv) {
+                let dots = 0;
+                thinkingInterval = setInterval(() => {
+                    dots = (dots + 1) % 4;
+                    thinkingDiv.textContent = 'Thinking' + '.'.repeat(dots);
+                }, 500);
+            }
 
             function addMessage(content, isUser = false) {
                 const messageDiv = document.createElement('div');
@@ -142,8 +149,13 @@
                 addMessage(message, true);
                 userInput.value = '';
 
-                // Show loading indicator
-                loadingIndicator.style.display = 'block';
+                // Add thinking message with animated dots
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'message ai-message';
+                thinkingDiv.textContent = 'Thinking';
+                messagesContainer.appendChild(thinkingDiv);
+                updateThinkingDots(thinkingDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
                 try {
                     const response = await fetch('/api/get-hw-help', {
@@ -156,16 +168,22 @@
 
                     const data = await response.json();
                     
+                    // Clear the interval and remove thinking message
+                    clearInterval(thinkingInterval);
+                    messagesContainer.removeChild(thinkingDiv);
+                    
                     if (data.error) {
                         addMessage('Sorry, I encountered an error. Please try again.');
                     } else {
                         addMessage(data.response);
                     }
                 } catch (error) {
+                    // Clear the interval and remove thinking message
+                    clearInterval(thinkingInterval);
+                    messagesContainer.removeChild(thinkingDiv);
+                    
                     console.error('Error:', error);
                     addMessage('Sorry, I encountered an error. Please try again.');
-                } finally {
-                    loadingIndicator.style.display = 'none';
                 }
             }
 

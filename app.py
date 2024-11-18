@@ -9,10 +9,11 @@ from datetime import datetime, timedelta
 import calendar
 from Services.ai_service import AIService
 from Services.inbox_services import InboxService
+from PIL import Image
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.debug = True
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-secret-key-here')
 csrf = CSRFProtect(app)
@@ -20,13 +21,21 @@ cache = Cache(app, config={
     'CACHE_TYPE': 'simple',
     'CACHE_DEFAULT_TIMEOUT': 300
 })
+
+print("Current working directory:", os.getcwd())
+print("Static folder absolute path:", os.path.abspath(app.static_folder))
+print("Looking for image at:", os.path.join(app.static_folder, 'images/class-icons/default_icon.png'))
+print("Image exists:", os.path.exists(os.path.join(app.static_folder, 'images/class-icons/default_icon.png')))
+
 @app.template_filter('format_date')
 def format_date(date_str):
-    if not date_str or date_str == 'No due date':
-        return 'No due date'
+    if not date_str:
+        return "No due date"
     try:
-        date_obj = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ')
-        return date_obj.strftime('%B %d, %Y at %I:%M %p')
+        # Parse the ISO format date string
+        date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        # Format as "month/day"
+        return date_obj.strftime("%m/%d")
     except:
         return date_str
 
@@ -50,6 +59,10 @@ def dashboard():
     user_name = canvas_service.get_user_name()
     user_avatar = canvas_service.get_user_profile_picture()
     
+    for class_info in classes:
+        icon_path = 'images/class-icons/default_icon.png'
+        class_info['image_url'] = icon_path
+    
     # Get all assignments
     assignments = canvas_service.get_all_assignments()
     
@@ -71,6 +84,8 @@ def dashboard():
                 if date_key not in assignment_dict:
                     assignment_dict[date_key] = []
                 assignment_dict[date_key].append({
+                    'id': assignment['id'],
+                    'course_id': assignment['course_id'],
                     'name': assignment['name'],
                     'course_name': assignment['course_name']
                 })
@@ -436,6 +451,136 @@ def get_assignments_api():
     except Exception as e:
         print(f"Error fetching assignments: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/assignment-details/<int:course_id>/<int:assignment_id>')
+def get_assignment_details(course_id, assignment_id):
+    try:
+        canvas_service = CanvasService()
+        assignments = canvas_service.get_current_assignments(course_id)
+        
+        # Find the specific assignment
+        assignment = next((a for a in assignments if a['id'] == assignment_id), None)
+        
+        if assignment:
+            # Get the course name
+            courses = canvas_service.get_classes()
+            course = next((c for c in courses if c['id'] == course_id), None)
+            if course:
+                assignment['course_name'] = course['name']
+            
+            return jsonify(assignment)
+        else:
+            return jsonify({'error': 'Assignment not found'}), 404
+            
+    except Exception as e:
+        print(f"Error getting assignment details: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/course/<int:course_id>')
+def course_page(course_id):
+    try:
+        canvas_service = CanvasService()
+        
+        # Get course details
+        courses = canvas_service.get_classes()
+        course = next((c for c in courses if c['id'] == course_id), None)
+        
+        if not course:
+            return "Course not found", 404
+        
+        # Get assignments for this course
+        assignments = canvas_service.get_current_assignments(course_id)
+        
+        # Process assignments to ensure they have html_url
+        processed_assignments = []
+        for assignment in assignments:
+            processed_assignment = assignment.copy()
+            if 'html_url' not in processed_assignment:
+                processed_assignment['html_url'] = f"{canvas_service.canvas_url}/courses/{course_id}/assignments/{assignment['id']}"
+            processed_assignments.append(processed_assignment)
+        
+        return render_template('course_page.html', 
+                             course=course,
+                             assignments=processed_assignments)
+    except Exception as e:
+        print(f"Error in course_page: {str(e)}")
+        return str(e), 500
+
+@app.route('/select-assignment-for-videos')
+def select_assignment_for_videos():
+    try:
+        canvas_service = CanvasService()
+        courses = canvas_service.get_classes()
+        
+        current_time = datetime.now()
+        two_weeks_future = current_time + timedelta(days=14)
+        
+        current_assignments = []
+        for course in courses:
+            try:
+                course_assignments = canvas_service.get_current_assignments(course['id'])
+                if course_assignments:
+                    for assignment in course_assignments:
+                        if assignment.get('due_at'):
+                            due_date = datetime.strptime(assignment['due_at'], '%Y-%m-%dT%H:%M:%SZ')
+                            if (due_date > current_time - timedelta(days=1) and 
+                                due_date < two_weeks_future):
+                                # Add course name to assignment
+                                assignment['course_name'] = course['name']
+                                # Ensure description exists and is a string
+                                assignment['description'] = str(assignment.get('description', ''))
+                                # Clean description HTML if present
+                                if assignment['description']:
+                                    # Basic HTML tag removal (you might want to use a proper HTML parser)
+                                    description = assignment['description'].replace('<p>', '').replace('</p>', '\n')
+                                    assignment['description'] = description.strip()
+                                current_assignments.append(assignment)
+            except Exception as e:
+                print(f"Error processing course {course['name']}: {e}")
+                continue
+        
+        # Sort by due date
+        current_assignments.sort(key=lambda x: datetime.strptime(x['due_at'], '%Y-%m-%dT%H:%M:%SZ'))
+        
+        return render_template('select_assignment_for_videos.html', 
+                             assignments=current_assignments)
+                             
+    except Exception as e:
+        print(f"Error in select_assignment_for_videos: {str(e)}")
+        return render_template('error.html', error=str(e)), 500
+
+@app.route('/api/get-video-prompt', methods=['POST'])
+@csrf.exempt
+def api_get_video_prompt():
+    try:
+        data = request.json
+        name = data.get('name')
+        description = data.get('description')
+
+        print(f"Received request - Name: {name}, Description: {description}")  # Debug log
+        
+        if not name:
+            return jsonify({'error': 'Assignment name is required'}), 400
+            
+        # Use a default description if none provided
+        description = description or "No description available"
+        
+        ai_service = AIService()
+        search_prompt = ai_service.create_video_search_prompt(name, description)
+        
+        if search_prompt:
+            print(f"Generated prompt: {search_prompt}")  # Debug log
+            return jsonify({'prompt': search_prompt})
+        else:
+            return jsonify({'error': 'Failed to generate search prompt'}), 500
+            
+    except Exception as e:
+        print(f"Error in api_get_video_prompt: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/graphing-calculator')
+def graphing_calculator():
+    return render_template('desmos.html')
 
 if __name__ == '__main__':
     app.debug = True  # Enable debug mode

@@ -34,8 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Handle assignments option
         document.getElementById('assignments-option').addEventListener('click', function() {
-            // Temporarily using alert, you can replace with actual implementation
-            alert('Assignments option selected - Implementation coming soon');
+            window.location.href = '/select-assignment-for-videos';
             modal.style.display = 'none';
         });
     });
@@ -89,10 +88,62 @@ document.addEventListener('DOMContentLoaded', function() {
         const assignments = document.querySelectorAll('.assignment');
         assignments.forEach(assignment => {
             assignment.style.cursor = 'pointer';
-            assignment.addEventListener('click', function() {
-                // You can add functionality here to show more details about the assignment
-                // For now, just show the full name in case it was truncated
-                alert(this.textContent);
+            assignment.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent event bubbling
+                
+                // Get the course ID and assignment ID from data attributes
+                const courseId = this.dataset.courseId;
+                const assignmentId = this.dataset.assignmentId;
+
+                // Fetch assignment details from the API
+                fetch(`/api/assignment-details/${courseId}/${assignmentId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const popup = document.createElement('div');
+                        popup.className = 'assignment-popup';
+                        popup.innerHTML = `
+                            <span class="close-popup">&times;</span>
+                            <h3>${data.name}</h3>
+                            <p><strong>Class:</strong> ${data.course_name}</p>
+                            <p><strong>Due Date:</strong> ${formatDate(data.due_at)}</p>
+                            <p><strong>Points Possible:</strong> ${data.points_possible}</p>
+                            <p><strong>Description:</strong> ${data.description || 'No description available'}</p>
+                            ${data.html_url ? `<p><a href="${data.html_url}" target="_blank" class="view-assignment-btn">View in Canvas</a></p>` : ''}
+                        `;
+
+                        // Remove any existing popups
+                        const existingPopup = document.querySelector('.assignment-popup');
+                        if (existingPopup) {
+                            existingPopup.remove();
+                        }
+
+                        // Add the new popup
+                        document.body.appendChild(popup);
+
+                        // Close popup when clicking the X
+                        popup.querySelector('.close-popup').addEventListener('click', () => {
+                            popup.remove();
+                        });
+
+                        // Close popup when clicking outside
+                        document.addEventListener('click', function closePopup(e) {
+                            if (!popup.contains(e.target) && !e.target.classList.contains('assignment')) {
+                                popup.remove();
+                                document.removeEventListener('click', closePopup);
+                            }
+                        });
+
+                        // Close popup when pressing Escape
+                        document.addEventListener('keydown', function escapeClose(e) {
+                            if (e.key === 'Escape') {
+                                popup.remove();
+                                document.removeEventListener('keydown', escapeClose);
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching assignment details:', error);
+                    });
             });
         });
     }
@@ -136,6 +187,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.location.pathname === '/assignments') {
         loadAssignments();
     }
+
+    // Add this with your other event listeners
+    const classButtons = document.querySelectorAll('.class-button');
+    classButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const courseId = this.dataset.courseId;
+            window.location.href = `/course/${courseId}`;
+        });
+    });
+
+    // Add event listener for graphing calculator
+    document.getElementById('graphing-calculator')?.addEventListener('click', function() {
+        window.location.href = '/graphing-calculator';
+    });
 });
 
 async function createHomeworkDoc() {
@@ -184,4 +249,10 @@ function promptForInput(message) {
         const input = prompt(message);
         resolve(input);
     });
+}
+
+// Helper function to format dates
+function formatDate(date) {
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(date).toLocaleDateString(undefined, options);
 }

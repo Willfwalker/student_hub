@@ -109,7 +109,7 @@
     </header>
     <div class="assignments-container">
         <div class="assignments-content">
-            <a href="{{ url_for('dashboard') }}" class="back-button">Back to Dashboard</a>
+            <a href="javascript:history.back()" class="back-button">← Back</a>
             <div class="assignments-list">
                 {% for course in courses %}
                     {% if assignments.get(course.id) %}

@@ -3,6 +3,7 @@ from typing import Optional, List
 from googleapiclient.discovery import build
 import speech_recognition as sr
 from config.settings import GEMINI_API_KEY, YOUTUBE_API_KEY
+from PIL import Image
 
 class AIService:
     def __init__(self):
@@ -34,27 +35,23 @@ class AIService:
                 
                 print("Audio captured, processing...")  # Debug log
                 
-                # Try different speech recognition services
+                # Try services in order of reliability
                 try:
+                    # Try Google Web Speech API first
                     text = self.recognizer.recognize_google(audio)
-                    print(f"Transcription successful: {text}")  # Debug log
                     return text
                 except sr.UnknownValueError:
-                    print("Google Speech Recognition could not understand audio")
-                    return None
-                except sr.RequestError as e:
-                    print(f"Could not request results from Google Speech Recognition service; {e}")
-                    return None
-                
-        except sr.UnknownValueError:
-            print("Could not understand audio")
-        except sr.RequestError as e:
-            print(f"Speech recognition error: {e}")
-        except sr.WaitTimeoutError:
-            print("No speech detected within timeout period")
+                    try:
+                        # Fallback to Sphinx (offline)
+                        text = self.recognizer.recognize_sphinx(audio)
+                        return text
+                    except:
+                        # Could add more fallback services here
+                        return None
+                    
         except Exception as e:
             print(f"Unexpected error during transcription: {e}")
-        return None
+            return None
 
     def summarize_text(self, text: str) -> Optional[str]:
         """Generate a summary of the provided text."""
@@ -158,14 +155,7 @@ class AIService:
             return None    
 
     def get_ai_response(self, prompt: str) -> Optional[str]:
-        """Get a response from AI for any given prompt.
-        
-        Args:
-            prompt (str): The user's prompt/question for the AI
-            
-        Returns:
-            Optional[str]: The AI's response, or None if there's an error
-        """
+        """Get a response from AI for any given prompt."""
         try:
             if not prompt or not prompt.strip():
                 raise ValueError("Empty prompt provided")
@@ -178,8 +168,75 @@ class AIService:
             if not response.text:
                 raise Exception("Empty response received from Gemini API")
             
-            return response.text.strip()
+            # Clean up the response by removing asterisks
+            cleaned_response = response.text.strip().replace('*', '')
+            return cleaned_response
             
         except Exception as e:
             print(f"Error getting AI response: {str(e)}")
+            return None
+
+    def generate_image(self, prompt: str, 
+                      height: int = 1024, 
+                      width: int = 1024,
+                      seed: Optional[int] = None) -> Optional[Image.Image]:
+        """Return the default icon."""
+        try:
+            return Image.open("@default_icon.png")
+        except Exception as e:
+            print(f"Error loading default icon: {str(e)}")
+            return None
+
+    def create_video_search_prompt(self, assignment_name: str, description: str) -> Optional[str]:
+        """Create an optimized YouTube search prompt from assignment details."""
+        try:
+            if not assignment_name or not description:
+                print("Missing assignment name or description")
+                return None
+            
+            # Clean and validate inputs
+            assignment_name = str(assignment_name).strip()
+            description = str(description).strip()
+            
+            prompt = f"""Given this assignment:
+            Title: {assignment_name}
+            Description: {description}
+
+            Create a concise, focused YouTube search query that will find educational videos 
+            explaining the core concepts needed to complete this assignment. 
+            The query should:
+            - Be 2-3 key phrases
+            - Focus on the main topic or skill needed
+            - Use common educational terminology
+            - Exclude assignment-specific details
+            
+            Return only the search query, no other text."""
+            
+            try:
+                response = self.model.generate_content(prompt)
+                
+                if not response:
+                    print("No response received from Gemini API")
+                    return None
+                    
+                if not hasattr(response, 'text'):
+                    print("Response missing text attribute")
+                    return None
+                    
+                text = response.text
+                if not text or not isinstance(text, str):
+                    print("Invalid response text")
+                    return None
+                    
+                # Clean up and format the response
+                search_query = text.strip().replace('\n', ' ')
+                print(f"Generated search query: {search_query}")  # Debug log
+                return search_query
+                
+            except AttributeError as e:
+                print(f"Attribute error with Gemini response: {e}")
+                return None
+                
+        except Exception as e:
+            print(f"Error creating video search prompt: {e}")
             return None

@@ -80,7 +80,7 @@
 </head>
 <body>
     <div class="video-container">
-        <a href="{{ url_for('dashboard') }}" class="back-button">← Back to Dashboard</a>
+        <a href="javascript:history.back()" class="back-button">← Back</a>
         <h1>Video Recommendations</h1>
         <div class="search-prompt">Search results for: "{{ prompt }}"</div>
         <div class="video-list">

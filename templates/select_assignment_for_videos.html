@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Assignment for Videos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .page-container {
+            padding: 40px !important;
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            min-height: 100vh !important;
+            background: linear-gradient(45deg, #1a1a1a, #2c3e50) !important;
+        }
+
+        .page-title {
+            color: white !important;
+            font-size: 2em !important;
+            margin-bottom: 30px !important;
+            text-decoration: underline !important;
+            text-decoration-thickness: 2px !important;
+            text-underline-offset: 5px !important;
+        }
+
+        .assignments-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+            gap: 20px !important;
+            padding: 20px 0 !important;
+        }
+
+        .assignment-card {
+            background: rgba(255, 255, 255, 0.1) !important;
+            padding: 20px !important;
+            border-radius: 8px !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .assignment-card:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-2px) !important;
+        }
+
+        .assignment-card h3 {
+            margin-top: 0 !important;
+            margin-bottom: 10px !important;
+            font-size: 1.2em !important;
+        }
+
+        .assignment-card p {
+            margin: 5px 0 !important;
+            font-size: 0.9em !important;
+            opacity: 0.8 !important;
+        }
+
+        .back-button {
+            display: inline-block !important;
+            padding: 10px 20px !important;
+            background: rgba(26, 26, 26, 0.9) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            border-radius: 8px !important;
+            text-decoration: none !important;
+            margin-bottom: 20px !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <a href="{{ url_for('dashboard') }}" class="back-button">← Back to Dashboard</a>
+        <h1 class="page-title">Select an Assignment for Video Recommendations</h1>
+        
+        <div class="assignments-grid">
+            {% for assignment in assignments %}
+            <div class="assignment-card" 
+                 data-name="{{ assignment.name|default('')|e }}"
+                 data-description="{{ assignment.description|default('')|e }}">
+                <h3>{{ assignment.name }}</h3>
+                <p><strong>Course:</strong> {{ assignment.course_name }}</p>
+                <p><strong>Due:</strong> {{ assignment.due_at|format_date }}</p>
+                {% if assignment.description %}
+                    <p class="description-preview">{{ assignment.description|truncate(100) }}</p>
+                {% else %}
+                    <p class="description-preview">No description available</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.assignment-card').forEach(card => {
+            card.addEventListener('click', async function() {
+                const name = this.dataset.name;
+                const description = this.dataset.description || '';  // Provide default empty string
+                
+                try {
+                    console.log('Assignment Name:', name);  // Debug log
+                    console.log('Assignment Description:', description);  // Debug log
+                    
+                    if (!name) {
+                        throw new Error('Assignment name is missing');
+                    }
+                    
+                    // First get an optimized search prompt from the AI
+                    const response = await fetch('/api/get-video-prompt', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            name: name,
+                            description: description
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to get video prompt');
+                    }
+                    
+                    const data = await response.json();
+                    if (!data.prompt) {
+                        throw new Error('No prompt received from server');
+                    }
+                    
+                    // Redirect to video recommendations with the AI-generated prompt
+                    window.location.href = `/recommend-videos?prompt=${encodeURIComponent(data.prompt)}`;
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error getting video recommendations: ' + error.message);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

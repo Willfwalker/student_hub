@@ -646,6 +646,115 @@
         .dropdown-item i {
             font-size: 16px !important;
         }
+
+        .assignment-popup {
+            display: block;
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            background: rgba(26, 26, 26, 0.95) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 8px !important;
+            padding: 20px !important;
+            z-index: 1001 !important;
+            min-width: 300px !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+            color: white !important;
+            animation: fadeIn 0.2s ease-out !important;
+        }
+
+        .assignment-popup h3 {
+            margin-top: 0 !important;
+            margin-bottom: 15px !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+            padding-bottom: 10px !important;
+        }
+
+        .assignment-popup p {
+            margin: 10px 0 !important;
+        }
+
+        .assignment-popup .close-popup {
+            position: absolute !important;
+            right: 10px !important;
+            top: 10px !important;
+            cursor: pointer !important;
+            font-size: 20px !important;
+            color: rgba(255, 255, 255, 0.7) !important;
+            transition: color 0.3s ease !important;
+        }
+
+        .assignment-popup .close-popup:hover {
+            color: white !important;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -48%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        .view-assignment-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 16px;
+            background-color: #0066cc;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .view-assignment-btn:hover {
+            background-color: #0052a3;
+        }
+
+        .assignment-popup p {
+            margin: 10px 0;
+            line-height: 1.4;
+        }
+
+        .assignment-popup .description {
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .assignments-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+            gap: 20px !important;
+            max-height: 70vh !important;
+            overflow-y: auto !important;
+            padding: 20px !important;
+        }
+
+        .assignment-option {
+            background: rgba(255, 255, 255, 0.1) !important;
+            padding: 20px !important;
+            border-radius: 8px !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            color: white !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .assignment-option:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-2px) !important;
+        }
+
+        .assignment-option h3 {
+            margin-top: 0 !important;
+            margin-bottom: 10px !important;
+            font-size: 1.1em !important;
+        }
+
+        .assignment-option p {
+            margin: 5px 0 !important;
+            font-size: 0.9em !important;
+            opacity: 0.8 !important;
+        }
     </style>
 </head>
 <body>
@@ -681,6 +790,7 @@
             <button class="task-button" id="lecture-summary">Create Lecture Summary</button>
             <a href="{{ url_for('get_hw_help') }}" class="task-button" id="homework-help">Get Homework Help</a>
             <button class="task-button" id="todo-list">To-Do List Maker</button>
+            <button class="task-button" id="graphing-calculator">Graphing Calculator</button>
         </div>
         <div class="main-content">
             <a href="{{ url_for('make_hw_doc') }}" class="hw-doc-button" id="create-hw-doc">Create HW Doc</a>
@@ -689,11 +799,13 @@
             <div class="class-buttons">
                 {% for class in classes %}
                     <div class="class-container">
-                        <button class="class-button">
+                        <button class="class-button" data-course-id="{{ class.id }}">
                             <div class="class-image-container">
-                                <img src="{{ url_for('static', filename='images/class-icons/default_icon.png') }}" 
+                                {% set image_url = url_for('static', filename='images/class-icons/default_icon.png') %}
+                                <img src="{{ image_url }}"
                                      alt="{{ class.name }}"
-                                     class="class-image">
+                                     class="class-image"
+                                     onerror="this.src='{{ url_for('static', filename='images/class-icons/default_icon.png') }}';">
                             </div>
                             <div class="class-name">{{ class.name }}</div>
                         </button>
@@ -720,7 +832,12 @@
                             {% if day.assignments %}
                                 <div class="assignments">
                                     {% for assignment in day.assignments %}
-                                        <div class="assignment" data-name="{{ assignment.name }}" data-due-date="{{ assignment.due_date }}" data-class="{{ assignment.class }}" data-description="{{ assignment.description }}">{{ assignment.name }}</div>
+                                        <div class="assignment" 
+                                             data-course-id="{{ assignment.course_id }}"
+                                             data-assignment-id="{{ assignment.id }}"
+                                             title="{{ assignment.name }}">
+                                            {{ assignment.name }}
+                                        </div>
                                     {% endfor %}
                                 </div>
                             {% endif %}

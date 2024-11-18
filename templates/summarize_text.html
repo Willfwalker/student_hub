@@ -83,7 +83,7 @@
         <button class="login-button">Login</button>
     </header>
     <div class="container">
-        <a href="{{ url_for('dashboard') }}" class="back-button">Back to Dashboard</a>
+        <a href="javascript:history.back()" class="back-button">← Back</a>
         <div class="summarize-content">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <textarea class="text-input" placeholder="Enter the text you want to summarize..."></textarea>
