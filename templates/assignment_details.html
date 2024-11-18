@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ assignment.title }} - Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .assignment-details-container {
+            width: 95% !important;
+            margin: 30px auto !important;
+            padding: 40px !important;
+            background: linear-gradient(to bottom, rgba(26, 26, 26, 0.95), rgba(30, 30, 30, 0.95)) !important;
+            border-radius: 15px !important;
+            color: white !important;
+            position: relative !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .assignment-header {
+            margin-bottom: 35px !important;
+            padding-bottom: 25px !important;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.15) !important;
+        }
+
+        .assignment-title {
+            font-size: 2.2em !important;
+            font-weight: 600 !important;
+            margin: 0 0 15px 0 !important;
+            color: white !important;
+            letter-spacing: -0.5px !important;
+        }
+
+        .assignment-meta {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+            gap: 25px !important;
+            margin: 35px 0 !important;
+            padding: 25px !important;
+            background: rgba(255, 255, 255, 0.03) !important;
+            border-radius: 12px !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .meta-item {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+
+        .meta-label {
+            font-size: 0.9em !important;
+            color: rgba(255, 255, 255, 0.6) !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            font-weight: 500 !important;
+        }
+
+        .meta-value {
+            font-size: 1.1em !important;
+            color: white !important;
+            font-weight: 500 !important;
+        }
+
+        .assignment-description {
+            line-height: 1.8 !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+            padding: 30px !important;
+            background: rgba(255, 255, 255, 0.02) !important;
+            border-radius: 12px !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+            font-size: 1.05em !important;
+        }
+
+        .back-button {
+            display: inline-flex !important;
+            align-items: center !important;
+            padding: 10px 20px !important;
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+            text-decoration: none !important;
+            border-radius: 4px !important;
+            transition: background-color 0.3s ease !important;
+            margin-bottom: 20px !important;
+        }
+
+        .back-button:hover {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .start-homework-button {
+            position: absolute !important;
+            top: 20px !important;
+            right: 20px !important;
+            padding: 12px 24px !important;
+            background: linear-gradient(45deg, #4CAF50, #45a049) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 5px !important;
+            cursor: pointer !important;
+            font-size: 1em !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease !important;
+            text-decoration: none !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        }
+
+        .start-homework-button:disabled {
+            background: linear-gradient(45deg, #808080, #696969) !important;
+            cursor: wait !important;
+            transform: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .assignment-details-container {
+                width: 98% !important;
+                margin: 10px auto !important;
+                padding: 15px !important;
+            }
+
+            .assignment-meta {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+                gap: 15px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="assignment-details-container">
+        <button id="startHomeworkBtn" onclick="startHomework()" class="start-homework-button">
+            Open/Create Homework Document
+        </button>
+
+        <a href="{{ url_for('course_page', course_id=assignment.course_id) }}" class="back-button">
+            ← Back to Course
+        </a>
+
+        <div class="assignment-header">
+            <h1 class="assignment-title">{{ assignment.title }}</h1>
+        </div>
+
+        <div class="assignment-meta">
+            <div class="meta-item">
+                <span class="meta-label">Professor</span>
+                <span class="meta-value">{{ assignment.professor }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Due Date</span>
+                <span class="meta-value">{{ assignment.due_date|format_date }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Points Possible</span>
+                <span class="meta-value">{{ assignment.points_possible }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Submission Type</span>
+                <span class="meta-value">{{ assignment.submission_types|join(', ')|title }}</span>
+            </div>
+        </div>
+
+        <div class="assignment-description">
+            {{ assignment.description|safe }}
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if document exists when page loads
+        const courseId = {{ assignment.course_id }};
+        const assignmentId = {{ assignment.assignment_id }};
+        
+        fetch('/api/create-homework-doc', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                course_id: courseId,
+                assignment_id: assignmentId,
+                check_only: true  // Add this flag to just check existence
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const btn = document.getElementById('startHomeworkBtn');
+            if (data.doc_info) {
+                btn.textContent = 'Open Assignment';
+            } else {
+                btn.textContent = 'Start Assignment';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking document:', error);
+        });
+    });
+
+    function startHomework() {
+        const btn = document.getElementById('startHomeworkBtn');
+        const isExisting = btn.textContent === 'Open Assignment';
+        
+        btn.disabled = true;
+        btn.textContent = isExisting ? 'Opening Doc...' : 'Making Doc...';
+        
+        const courseId = {{ assignment.course_id }};
+        const assignmentId = {{ assignment.assignment_id }};
+        
+        fetch('/api/create-homework-doc', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                course_id: courseId,
+                assignment_id: assignmentId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Failed to create document');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.doc_info && data.doc_info.url) {
+                btn.textContent = isExisting ? 'Opening Document...' : 'Document Created!';
+                window.open(data.doc_info.url, '_blank');
+            } else {
+                throw new Error('Invalid response format');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error with document: ' + error.message);
+        })
+        .finally(() => {
+            // Reset button after 2 seconds
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = isExisting ? 'Open Assignment' : 'Start Assignment';
+            }, 2000);
+        });
+    }
+    </script>
+</body>
+</html>

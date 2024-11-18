@@ -59,9 +59,43 @@ def dashboard():
     user_name = canvas_service.get_user_name()
     user_avatar = canvas_service.get_user_profile_picture()
     
+    # Calculate GPA
+    total_points = 0
+    total_credits = 0
+    
     for class_info in classes:
-        icon_path = 'images/class-icons/default_icon.png'
-        class_info['image_url'] = icon_path
+        try:
+            grade_info = canvas_service.get_grades(class_info['id'])
+            if grade_info and grade_info['percentage'] is not None:
+                # Assuming each class is 3 credits
+                credits = 3
+                percentage = grade_info['percentage']
+                
+                # Convert percentage to GPA points
+                if percentage >= 93: points = 4.0
+                elif percentage >= 90: points = 3.7
+                elif percentage >= 87: points = 3.3
+                elif percentage >= 83: points = 3.0
+                elif percentage >= 80: points = 2.7
+                elif percentage >= 77: points = 2.3
+                elif percentage >= 73: points = 2.0
+                elif percentage >= 70: points = 1.7
+                elif percentage >= 67: points = 1.3
+                elif percentage >= 63: points = 1.0
+                elif percentage >= 60: points = 0.7
+                else: points = 0.0
+                
+                total_points += points * credits
+                total_credits += credits
+                
+            class_info['grade'] = f"{grade_info['percentage']:.1f}% ({grade_info['letter']})" if grade_info else 'N/A'
+                
+        except Exception as e:
+            print(f"Error getting grades for {class_info['name']}: {e}")
+            class_info['grade'] = 'N/A'
+    
+    # Calculate final GPA
+    calculated_gpa = round(total_points / total_credits, 2) if total_credits > 0 else None
     
     # Get all assignments
     assignments = canvas_service.get_all_assignments()
@@ -119,7 +153,8 @@ def dashboard():
                          user_name=user_name, 
                          user_avatar=user_avatar,
                          calendar_days=calendar_days,
-                         current_month_year=current_month_year)
+                         current_month_year=current_month_year,
+                         calculated_gpa=calculated_gpa)
 
 @app.route('/api/create-homework-doc', methods=['POST'])
 def create_homework_doc():
@@ -127,19 +162,43 @@ def create_homework_doc():
         docs_service = DocsService()
         canvas_service = CanvasService()
         
-        # Convert the index to integer
-        selected_index = request.json.get('selected_assignment_index')
-        if selected_index is not None:
-            selected_index = int(selected_index)
+        # Get data from request
+        data = request.json
+        course_id = data.get('course_id')
+        assignment_id = data.get('assignment_id')
+        check_only = data.get('check_only', False)
         
+        if not course_id or not assignment_id:
+            return jsonify({'error': 'Missing course_id or assignment_id'}), 400
+            
+        # Check if document already exists
+        existing_doc = docs_service.get_existing_document(str(course_id), str(assignment_id))
+        
+        # If just checking existence or document exists, return the info
+        if check_only or existing_doc:
+            return jsonify({'doc_info': existing_doc})
+        
+        # Get assignment details from Canvas
+        assignment_details = canvas_service.get_assignment_details(course_id, assignment_id)
+        if not assignment_details:
+            return jsonify({'error': 'Assignment not found'}), 404
+        
+        # Create document using the create_homework_document method
         result = docs_service.create_homework_document(
             canvas_service=canvas_service,
-            selected_assignment_index=selected_index,
-            student_name=request.json.get('student_name'),
-            professor=request.json.get('professor')
+            selected_assignment_index=None,  # Will be determined from the assignment_id
+            student_name=None,  # Will be fetched from Canvas
+            professor=None  # Will be fetched from Canvas
         )
         
-        return jsonify(result)
+        if result.get('error'):
+            return jsonify({'error': result['error']}), 500
+            
+        if result.get('doc_info'):
+            return jsonify({'status': 'document_created', 'doc_info': result['doc_info']})
+        
+        return jsonify({'error': 'Failed to create document'}), 500
+
     except Exception as e:
         print(f"Error in create_homework_doc: {str(e)}")
         import traceback
@@ -480,16 +539,24 @@ def get_assignment_details(course_id, assignment_id):
 def course_page(course_id):
     try:
         canvas_service = CanvasService()
-        
-        # Get course details
-        courses = canvas_service.get_classes()
-        course = next((c for c in courses if c['id'] == course_id), None)
+        course = next((c for c in canvas_service.get_classes() if c['id'] == course_id), None)
         
         if not course:
             return "Course not found", 404
-        
-        # Get assignments for this course
+
+        # Get the grade info if it's not already in the course object
+        if 'grade' not in course:
+            grade_info = canvas_service.get_grades(course_id)
+            if grade_info and grade_info['percentage'] is not None:
+                course['grade'] = f"{grade_info['percentage']:.1f}% ({grade_info['letter']})"
+            else:
+                course['grade'] = 'N/A'
+
+        # Get current assignments
         assignments = canvas_service.get_current_assignments(course_id)
+        
+        # Get past assignments
+        past_assignments = canvas_service.get_past_assignments(course_id)
         
         # Process assignments to ensure they have html_url
         processed_assignments = []
@@ -501,7 +568,8 @@ def course_page(course_id):
         
         return render_template('course_page.html', 
                              course=course,
-                             assignments=processed_assignments)
+                             assignments=processed_assignments,
+                             past_assignments=past_assignments)
     except Exception as e:
         print(f"Error in course_page: {str(e)}")
         return str(e), 500
@@ -581,6 +649,32 @@ def api_get_video_prompt():
 @app.route('/graphing-calculator')
 def graphing_calculator():
     return render_template('desmos.html')
+
+@app.route('/assignment/<int:course_id>/<int:assignment_id>')
+@cache.cached(timeout=300)
+def assignment_details(course_id, assignment_id):
+    try:
+        canvas_service = CanvasService()
+        details = canvas_service.get_assignment_details(course_id, assignment_id)
+        
+        if not details:
+            return "Assignment not found", 404
+            
+        # Add submission types if not present
+        if 'submission_types' not in details:
+            details['submission_types'] = []
+            
+        # Ensure all required fields are present
+        required_fields = ['title', 'professor', 'description', 'due_date', 
+                         'points_possible', 'submission_types', 'course_id']
+        for field in required_fields:
+            if field not in details:
+                details[field] = 'N/A'
+                
+        return render_template('assignment_details.html', assignment=details)
+    except Exception as e:
+        print(f"Error in assignment_details: {str(e)}")
+        return str(e), 500
 
 if __name__ == '__main__':
     app.debug = True  # Enable debug mode

@@ -11,6 +11,7 @@ import pandas as pd
 from datetime import datetime
 from os import getenv
 from dotenv import load_dotenv
+import json
 
 class DocsService:
     SCOPES = [
@@ -25,6 +26,7 @@ class DocsService:
         base_path = "/Users/willwalker/Desktop/Website/student_hub_functions"
         self.credentials_path = os.path.join(base_path, 'credentials.json')
         self.folder_ids_path = os.path.join(base_path, 'Folder_Ids.csv')
+        self.docs_db_path = os.path.join(base_path, 'docs_database.json')
         
         if not os.path.exists(self.credentials_path):
             raise ValueError(f"Credentials file not found at: {self.credentials_path}")
@@ -36,6 +38,7 @@ class DocsService:
         self.credentials = self._get_credentials()
         self.docs_service = build('docs', 'v1', credentials=self.credentials)
         self.drive_service = build('drive', 'v3', credentials=self.credentials)
+        self._load_docs_database()
 
     def _get_credentials(self) -> Credentials:
         """Gets and refreshes Google API credentials."""
@@ -195,10 +198,11 @@ class DocsService:
             return False
 
     def create_class_folders(self, parent_folder_id: str, class_names: list) -> list:
-        """Creates folders for each class."""
+        """Creates folders for each class and a Notes subfolder within each."""
         created_folders = []
         for class_name in class_names:
             try:
+                # Create main class folder
                 folder_metadata = {
                     'name': class_name,
                     'mimeType': 'application/vnd.google-apps.folder',
@@ -213,6 +217,18 @@ class DocsService:
                 folder_id = folder.get('id')
                 self._save_folder_info(class_name, folder_id)
                 created_folders.append(folder_id)
+                
+                # Create Notes subfolder
+                notes_metadata = {
+                    'name': 'Notes',
+                    'mimeType': 'application/vnd.google-apps.folder',
+                    'parents': [folder_id]
+                }
+                
+                self.drive_service.files().create(
+                    body=notes_metadata,
+                    fields='id'
+                ).execute()
                 
             except Exception as e:
                 print(f'Error creating folder for {class_name}: {e}')
@@ -244,63 +260,102 @@ class DocsService:
                 if not student_name:
                     return {"error": "Could not get student name from Canvas"}
 
-            # Get all assignments from Canvas
-            assignments = []
-            courses = canvas_service.get_classes()
-            
-            # Collect assignments in a list
-            for course in courses:
-                course_assignments = canvas_service.get_current_assignments(course['id'])
-                professor = canvas_service.get_course_professor(course['id'])  # Get professor for each course
+            # If we have specific assignment details from the request
+            if hasattr(canvas_service, 'current_assignment'):
+                assignment = canvas_service.current_assignment
+                course = canvas_service.current_course
                 
-                for assignment in course_assignments:
-                    due_date = assignment.get("due_at")
-                    if due_date:
-                        due_date = datetime.strptime(due_date, "%Y-%m-%dT%H:%M:%SZ")
-                        due_date = due_date.strftime("%B %d, %Y at %I:%M %p")
-                    
-                    assignment_info = {
-                        'index': len(assignments),
-                        'course_name': course['name'],
-                        'name': assignment.get('name'),
-                        'due_date': due_date or 'No due date',
-                        'course_id': course['id'],
-                        'assignment_data': assignment
+                # Get folder ID for the class
+                folder_id = self._get_folder_id(course['name'])
+                if not folder_id:
+                    return {"error": "Could not find folder ID for class"}
+
+                # Create assignment info structure
+                assignment_info = {
+                    'course_name': course['name'],
+                    'name': assignment['name'],
+                    'course_id': course['id'],
+                    'assignment_data': assignment
+                }
+
+                # Create and setup document
+                doc_info = self._create_and_setup_document(
+                    assignment=assignment_info,
+                    student_name=student_name,
+                    professor=professor or canvas_service.get_course_professor(course['id']),
+                    folder_id=folder_id
+                )
+
+                if doc_info:
+                    # Store document info in database
+                    self.store_document_info(course['id'], assignment['id'], doc_info)
+                    return {
+                        "status": "document_created",
+                        "doc_info": doc_info
                     }
-                    assignments.append(assignment_info)
+                else:
+                    return {"error": "Failed to create document"}
 
-            # If no assignment is selected, return the list of assignments
-            if selected_assignment_index is None:
-                return {
-                    "assignments": assignments,
-                    "status": "pending_selection"
-                }
-
-            # If an assignment is selected, create the document
-            selected_assignment = assignments[selected_assignment_index]
-            
-            # Get folder ID for the class
-            folder_id = self._get_folder_id(selected_assignment['course_name'])
-            if not folder_id:
-                return {"error": "Could not find folder ID for class"}
-
-            # Create and setup document
-            doc_info = self._create_and_setup_document(
-                assignment=selected_assignment,
-                student_name=student_name,
-                professor=professor,
-                folder_id=folder_id
-            )
-
-            if doc_info:
-                return {
-                    "status": "document_created",
-                    "doc_info": doc_info
-                }
+            # Legacy code for selection-based creation
             else:
-                return {"error": "Failed to create document"}
+                # Get all assignments from Canvas
+                assignments = []
+                courses = canvas_service.get_classes()
+                
+                # Collect assignments in a list
+                for course in courses:
+                    course_assignments = canvas_service.get_current_assignments(course['id'])
+                    professor = canvas_service.get_course_professor(course['id'])  # Get professor for each course
+                    
+                    for assignment in course_assignments:
+                        due_date = assignment.get("due_at")
+                        if due_date:
+                            due_date = datetime.strptime(due_date, "%Y-%m-%dT%H:%M:%SZ")
+                            due_date = due_date.strftime("%B %d, %Y at %I:%M %p")
+                        
+                        assignment_info = {
+                            'index': len(assignments),
+                            'course_name': course['name'],
+                            'name': assignment.get('name'),
+                            'due_date': due_date or 'No due date',
+                            'course_id': course['id'],
+                            'assignment_data': assignment
+                        }
+                        assignments.append(assignment_info)
+
+                # If no assignment is selected, return the list of assignments
+                if selected_assignment_index is None:
+                    return {
+                        "assignments": assignments,
+                        "status": "pending_selection"
+                    }
+
+                # If an assignment is selected, create the document
+                selected_assignment = assignments[selected_assignment_index]
+                
+                # Get folder ID for the class
+                folder_id = self._get_folder_id(selected_assignment['course_name'])
+                if not folder_id:
+                    return {"error": "Could not find folder ID for class"}
+
+                # Create and setup document
+                doc_info = self._create_and_setup_document(
+                    assignment=selected_assignment,
+                    student_name=student_name,
+                    professor=professor,
+                    folder_id=folder_id
+                )
+
+                if doc_info:
+                    return {
+                        "status": "document_created",
+                        "doc_info": doc_info
+                    }
+                else:
+                    return {"error": "Failed to create document"}
 
         except Exception as e:
+            print(f"Error in create_homework_document: {str(e)}")  # Add debug logging
             return {"error": f"Error in create_homework_document: {str(e)}"}
 
     def _get_assignment_selection(self, assignments: List[Dict]) -> Optional[Dict]:
@@ -373,3 +428,35 @@ class DocsService:
         except Exception as e:
             print(f"Error setting up document: {e}")
             return None
+
+    def _load_docs_database(self):
+        """Load or create the documents database"""
+        try:
+            if os.path.exists(self.docs_db_path):
+                with open(self.docs_db_path, 'r') as f:
+                    self.docs_database = json.load(f)
+            else:
+                self.docs_database = {}
+                self._save_docs_database()
+        except Exception as e:
+            print(f"Error loading docs database: {e}")
+            self.docs_database = {}
+
+    def _save_docs_database(self):
+        """Save the documents database"""
+        try:
+            with open(self.docs_db_path, 'w') as f:
+                json.dump(self.docs_database, f)
+        except Exception as e:
+            print(f"Error saving docs database: {e}")
+
+    def get_existing_document(self, course_id, assignment_id):
+        """Check if a document already exists for this assignment"""
+        key = f"{course_id}_{assignment_id}"
+        return self.docs_database.get(key)
+
+    def store_document_info(self, course_id, assignment_id, doc_info):
+        """Store document information for future reference"""
+        key = f"{course_id}_{assignment_id}"
+        self.docs_database[key] = doc_info
+        self._save_docs_database()

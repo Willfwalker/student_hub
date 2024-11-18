@@ -111,7 +111,7 @@
             min-height: calc(100vh - 80px) !important;
             overflow-y: auto !important;
             width: calc(100% - 250px) !important;
-            padding-top: 0 !important;
+            padding-top: 20px !important;
         }
 
         .taskbar {
@@ -174,10 +174,8 @@
             text-decoration: none;
             border-radius: 8px;
             transition: all 0.3s ease;
-            position: fixed !important;
-            left: 275px !important;
-            top: 100px !important;
-            z-index: 101 !important;
+            margin-left: 45px !important;
+            margin-top: 80px !important;
             width: 150px !important;
             font-size: 1.1em !important;
             text-align: center !important;
@@ -198,20 +196,133 @@
         }
 
         .course-name {
-            position: fixed !important;
-            left: 275px !important;
-            top: 160px !important;
-            z-index: 101 !important;
+            margin-left: 45px !important;
+            margin-top: 20px !important;
             color: white !important;
             font-size: 1.2em !important;
             font-weight: 500 !important;
+        }
+
+        .past-assignments-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: rgba(26, 26, 26, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+            color: white;
+        }
+
+        .past-assignments-table th,
+        .past-assignments-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .past-assignments-table th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: 500;
+        }
+
+        .past-assignments-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .past-assignments-section {
+            margin-top: 30px !important;
+            padding: 20px;
+            margin-right: 270px;
+            position: relative;
+        }
+
+        .section-title {
+            color: white;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .past-assignments-table tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .past-assignments-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-section h3 {
+            color: white !important;
+            font-size: 1.2em !important;
+            margin-bottom: 15px !important;
+        }
+
+        .assignment-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .assignment-list li {
+            margin-bottom: 15px;
+        }
+
+        .assignment-list a {
+            display: block;
+            text-decoration: none;
+            color: white !important;
+            transition: opacity 0.3s ease;
+        }
+
+        .assignment-list a:hover {
+            opacity: 0.8;
+        }
+
+        .assignment-name {
+            display: block;
+            font-size: 0.95em;
+            margin-bottom: 4px;
+        }
+
+        .due-date {
+            display: block;
+            font-size: 0.85em;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .section-header {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding-bottom: 10px !important;
+            margin-bottom: 20px !important;
+        }
+
+        .course-grade {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            margin-right: 20px !important;
+        }
+
+        .grade-label {
+            color: rgba(255, 255, 255, 0.8) !important;
+            font-size: 0.9em !important;
+            font-weight: 500 !important;
+        }
+
+        .grade-value {
+            color: white !important;
+            font-size: 1.1em !important;
+            font-weight: bold !important;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2) !important;
         }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
-        <a href="{{ url_for('make_hw_doc') }}" class="create-hw-button">Create HW Doc</a>
-        <div class="course-name">{{ course.name }}</div>
         <div class="taskbar">
             <h2 class="taskbar-title">Tools</h2>
             <a href="{{ url_for('check_inbox') }}" class="task-button">Check Inbox</a>
@@ -223,22 +334,54 @@
             <a href="{{ url_for('get_hw_help') }}" class="task-button">Get Homework Help</a>
             <a href="{{ url_for('todo_list') }}" class="task-button">To-Do List Maker</a>
         </div>
+        
         <div class="main-content">
             <a href="{{ url_for('dashboard') }}" class="back-button">← Back to Dashboard</a>
+            
+            <a href="{{ url_for('make_hw_doc') }}" class="create-hw-button">Create HW Doc</a>
+            <div class="course-name">{{ course.name }}</div>
+            
+            <div class="past-assignments-section">
+                <div class="section-header">
+                    <h2 class="section-title">Past Assignments</h2>
+                    <div class="course-grade">
+                        <span class="grade-label">Current Grade:</span>
+                        <span class="grade-value">{{ course.grade|default('N/A') }}</span>
+                    </div>
+                </div>
+                <table class="past-assignments-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Grade</th>
+                            <th>Submitted</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignment in past_assignments %}
+                            <tr onclick="window.location.href='{{ url_for('assignment_details', course_id=course.id, assignment_id=assignment.id) }}'">
+                                <td>{{ assignment.name }}</td>
+                                <td>{{ assignment.grade }}</td>
+                                <td>{{ assignment.submitted_at|format_date if assignment.submitted_at else 'Not submitted' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
             <div class="sidebar">
-                <h2 class="sidebar-title">Current Assignments</h2>
-                <div class="assignments-grid">
-                    {% for assignment in assignments %}
-                        <div class="assignment-card">
-                            • {% if assignment.html_url %}
-                                <a href="{{ assignment.html_url }}" target="_blank">
-                                    {{ assignment.name }} ({{ assignment.due_at|format_date }})
+                <div class="sidebar-section">
+                    <h3>Current Assignments</h3>
+                    <ul class="assignment-list">
+                        {% for assignment in assignments %}
+                            <li>
+                                <a href="{{ url_for('assignment_details', course_id=course.id, assignment_id=assignment.id) }}">
+                                    <span class="assignment-name">{{ assignment.name }}</span>
+                                    <span class="due-date">Due: {{ assignment.due_at|format_date }}</span>
                                 </a>
-                            {% else %}
-                                <span>{{ assignment.name }} ({{ assignment.due_at|format_date }})</span>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
+                            </li>
+                        {% endfor %}
+                    </ul>
                 </div>
             </div>
         </div>

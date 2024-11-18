@@ -755,6 +755,71 @@
             font-size: 0.9em !important;
             opacity: 0.8 !important;
         }
+
+        .class-button {
+            position: relative !important;
+        }
+
+        .grade-bubble {
+            position: absolute !important;
+            top: 10px !important;
+            right: 10px !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            color: #1a1a1a !important;
+            padding: 5px 12px !important;
+            border-radius: 15px !important;
+            font-size: 0.85em !important;
+            font-weight: bold !important;
+            z-index: 2 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            white-space: nowrap !important;
+        }
+
+        .header-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            position: absolute !important;
+            top: calc(5% + 130px) !important;
+            width: calc(100% - 80px) !important;
+            left: 40px !important;
+            z-index: 2 !important;
+        }
+
+        .classes-heading {
+            margin: 0 !important;
+            color: white !important;
+            font-size: 2.5em !important;
+            font-weight: 500 !important;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.1) !important;
+            letter-spacing: 1px !important;
+            position: relative !important;
+        }
+
+        .gpa-calculator {
+            background: rgba(255, 255, 255, 0.1) !important;
+            padding: 10px 20px !important;
+            border-radius: 15px !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            margin-right: 40px !important;
+        }
+
+        .gpa-label {
+            color: rgba(255, 255, 255, 0.8) !important;
+            font-size: 1.1em !important;
+            font-weight: 500 !important;
+        }
+
+        .gpa-value {
+            color: white !important;
+            font-size: 1.3em !important;
+            font-weight: bold !important;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2) !important;
+        }
     </style>
 </head>
 <body>
@@ -795,11 +860,20 @@
         <div class="main-content">
             <a href="{{ url_for('make_hw_doc') }}" class="hw-doc-button" id="create-hw-doc">Create HW Doc</a>
             <div class="divider-line"></div>
-            <h2 class="classes-heading">Classes</h2>
+            <div class="header-row">
+                <h2 class="classes-heading">Classes</h2>
+                <div class="gpa-calculator">
+                    <span class="gpa-label">Current GPA:</span>
+                    <span class="gpa-value">{{ calculated_gpa|default('N/A') }}</span>
+                </div>
+            </div>
             <div class="class-buttons">
                 {% for class in classes %}
                     <div class="class-container">
                         <button class="class-button" data-course-id="{{ class.id }}">
+                            <div class="grade-bubble">
+                                {{ class.grade|default('N/A') }}
+                            </div>
                             <div class="class-image-container">
                                 {% set image_url = url_for('static', filename='images/class-icons/default_icon.png') %}
                                 <img src="{{ image_url }}"
